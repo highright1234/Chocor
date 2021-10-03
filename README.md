@@ -9,6 +9,8 @@ it can use this with compileOnly(if you apply Chocor plugin in server) or with F
 
 compileOnly로 사용할수도 있고(서버에 초커 플러그인을 넣는다면) FatJar로도 사용이 가능합니다
 
+---
+
 ```kt
 
 // in JavaPlugin
