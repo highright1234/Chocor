@@ -3,7 +3,7 @@ Minecraft plugin library for Kotlin users
 
 it can use this with compileOnly(if you apply Chocor plugin in server) or with FatJar
 
-
+---
 
 코틀린 유저용 마인크래프트 플러그인 라이브러리
 
