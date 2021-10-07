@@ -4,6 +4,8 @@ import org.bukkit.Bukkit
 import org.bukkit.event.Event
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
+import org.bukkit.event.block.Action
+import org.bukkit.event.player.PlayerInteractEvent
 import org.bukkit.plugin.java.JavaPlugin
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
@@ -15,13 +17,31 @@ fun callEvent(event : Event) {
     Bukkit.getServer().pluginManager.callEvent(event)
 }
 
-fun <T : Event> listener(clazz : KClass<T>, plugin : JavaPlugin, listener: T.() -> Unit) {
-    Bukkit.getServer().pluginManager.registerEvents(object : Listener {
+fun <T : Event> listener(clazz : KClass<T>, plugin : JavaPlugin, listener: T.() -> Unit) : Listener {
+    val listenerData = object : Listener {
         @EventHandler
         fun on(event : T) {
             listener(event)
         }
-    }, plugin)
+    }
+    Bukkit.getServer().pluginManager.registerEvents(listenerData, plugin)
+    return listenerData
+}
+
+fun onRightClick(plugin: JavaPlugin, listener: PlayerInteractEvent.() -> Unit) : Listener {
+    return listener(PlayerInteractEvent::class, plugin) {
+        if (action == Action.RIGHT_CLICK_AIR || action == Action.RIGHT_CLICK_BLOCK) {
+            listener(this)
+        }
+    }
+}
+
+fun onLeftClick(plugin: JavaPlugin, listener: PlayerInteractEvent.() -> Unit) : Listener {
+    return listener(PlayerInteractEvent::class, plugin) {
+        if (action == Action.LEFT_CLICK_AIR || action == Action.LEFT_CLICK_BLOCK) {
+            listener(this)
+        }
+    }
 }
 
 fun pluginMessage(pluginMessageChannel : String, plugin : JavaPlugin, listener: PluginMessageData.() -> Unit) {
@@ -29,11 +49,11 @@ fun pluginMessage(pluginMessageChannel : String, plugin : JavaPlugin, listener: 
         if (pluginMessageChannel.equals(channel, true)) {
             listener(PluginMessageData(player, message))
         }
-    };
+    }
 }
 
-fun loopTask(delay : Long = 0, period : Long = 0, plugin : JavaPlugin, task : () -> Unit) : BukkitTask{
-    var runnable : BukkitRunnable? = null
+fun loopTask(delay : Long = 0, period : Long = 0, plugin : JavaPlugin, task : () -> Unit) : BukkitTask {
+    lateinit var runnable : BukkitRunnable
     runnable = object : BukkitRunnable() {
         override fun run() {
             task()
@@ -43,13 +63,69 @@ fun loopTask(delay : Long = 0, period : Long = 0, plugin : JavaPlugin, task : ()
 }
 
 fun asyncLoopTask(delay : Long = 0, period : Long = 0, plugin : JavaPlugin, task : () -> Unit) : BukkitTask {
-    var runnable : BukkitRunnable? = null
+    lateinit var runnable : BukkitRunnable
     runnable = object : BukkitRunnable() {
         override fun run() {
             task()
         }
     }
     return runnable.runTaskTimerAsynchronously(plugin, delay, period)
+}
+
+fun countingLoopTask(
+    times : Int = 0,
+    delay : Long = 0,
+    period : Long = 0,
+    plugin : JavaPlugin,
+    task : (count : Int) -> Unit
+) : BukkitTask {
+    return loopTask(delay, period, plugin) {
+        for (i in 1..times) {
+            task(i)
+        }
+    }
+}
+
+fun asyncCountingLoopTask(
+    times : Int = 0,
+    delay : Long = 0,
+    period : Long = 0,
+    plugin : JavaPlugin,
+    task : (count : Int) -> Unit
+) : BukkitTask {
+    return asyncLoopTask(delay, period, plugin) {
+        for (i in 1..times) {
+            task(i)
+        }
+    }
+}
+
+fun countDownLoopTask(
+    times : Int = 0,
+    delay : Long = 0,
+    period : Long = 0,
+    plugin : JavaPlugin,
+    task : (count : Int) -> Unit
+) : BukkitTask {
+    return loopTask(delay, period, plugin) {
+        for (i in times..1) {
+            task(i)
+        }
+    }
+}
+
+fun asyncCountDownLoopTask(
+    times : Int = 0,
+    delay : Long = 0,
+    period : Long = 0,
+    plugin : JavaPlugin,
+    task : (count : Int) -> Unit
+) : BukkitTask {
+    return asyncLoopTask(delay, period, plugin) {
+        for (i in times..1) {
+            task(i)
+        }
+    }
 }
 
 fun runTaskLater(delay : Long, plugin : JavaPlugin, task : () -> Unit) : BukkitTask {
@@ -79,8 +155,15 @@ fun runTaskLaterAsync(delay : Long, plugin : JavaPlugin, task : () -> Unit) : Bu
 
 
 
+
+
 fun <T : Event> JavaPlugin.listener(clazz : KClass<T>, listener : T.() -> Unit) {
     listener(clazz, this, listener)
+}
+
+@JvmName("onRightClick1")
+fun JavaPlugin.onRightClick(listener: PlayerInteractEvent.() -> Unit) {
+    onRightClick(this, listener)
 }
 
 fun JavaPlugin.pluginMessage(channel : String, listener: PluginMessageData.() -> Unit) {
@@ -93,6 +176,58 @@ fun JavaPlugin.loopTask(delay : Long = 0, period : Long = 0, task : () -> Unit) 
 
 fun JavaPlugin.asyncLoopTask(delay : Long = 0, period : Long = 0, task : () -> Unit) : BukkitTask {
     return asyncLoopTask(delay, period, this, task)
+}
+
+fun JavaPlugin.countingLoopTask(
+    times : Int = 0,
+    delay : Long = 0,
+    period : Long = 0,
+    task : (count : Int) -> Unit
+) : BukkitTask {
+    return loopTask(delay, period) {
+        for (i in 1..times) {
+            task(i)
+        }
+    }
+}
+
+fun JavaPlugin.asyncCountingLoopTask(
+    times : Int = 0,
+    delay : Long = 0,
+    period : Long = 0,
+    task : (count : Int) -> Unit
+) : BukkitTask {
+    return asyncLoopTask(delay, period) {
+        for (i in 1..times) {
+            task(i)
+        }
+    }
+}
+
+fun JavaPlugin.countDownLoopTask(
+    times : Int = 0,
+    delay : Long = 0,
+    period : Long = 0,
+    task : (count : Int) -> Unit
+) : BukkitTask {
+    return loopTask(delay, period) {
+        for (i in times..1) {
+            task(i)
+        }
+    }
+}
+
+fun JavaPlugin.asyncCountDownLoopTask(
+    times : Int = 0,
+    delay : Long = 0,
+    period : Long = 0,
+    task : (count : Int) -> Unit
+) : BukkitTask {
+    return asyncLoopTask(delay, period) {
+        for (i in times..1) {
+            task(i)
+        }
+    }
 }
 
 fun JavaPlugin.runTaskLater(delay : Long, task : () -> Unit) : BukkitTask {
