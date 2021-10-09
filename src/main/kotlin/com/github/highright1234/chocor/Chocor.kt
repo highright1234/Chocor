@@ -72,60 +72,54 @@ fun asyncLoopTask(delay : Long = 0, period : Long = 0, plugin : JavaPlugin, task
     return runnable.runTaskTimerAsynchronously(plugin, delay, period)
 }
 
-fun countingLoopTask(
-    times : Int = 0,
+fun loopTask(
+    times : IntRange,
     delay : Long = 0,
     period : Long = 0,
     plugin : JavaPlugin,
     task : (count : Int) -> Unit
 ) : BukkitTask {
-    return loopTask(delay, period, plugin) {
-        for (i in 1..times) {
-            task(i)
+
+    lateinit var taskData : BukkitTask
+    var i = times.first
+
+    taskData = loopTask(delay, period, plugin) {
+        task(i)
+        if (i < times.last) {
+            i++
+        } else if (i > times.last) {
+            i--
+        } else {
+            taskData.cancel()
         }
     }
+    return taskData
 }
 
-fun asyncCountingLoopTask(
-    times : Int = 0,
+fun asyncLoopTask(
+    times : IntRange,
     delay : Long = 0,
     period : Long = 0,
     plugin : JavaPlugin,
     task : (count : Int) -> Unit
 ) : BukkitTask {
-    return asyncLoopTask(delay, period, plugin) {
-        for (i in 1..times) {
-            task(i)
-        }
-    }
-}
 
-fun countDownLoopTask(
-    times : Int = 0,
-    delay : Long = 0,
-    period : Long = 0,
-    plugin : JavaPlugin,
-    task : (count : Int) -> Unit
-) : BukkitTask {
-    return loopTask(delay, period, plugin) {
-        for (i in times..1) {
-            task(i)
-        }
-    }
-}
+    lateinit var taskData : BukkitTask
+    var i = times.first
 
-fun asyncCountDownLoopTask(
-    times : Int = 0,
-    delay : Long = 0,
-    period : Long = 0,
-    plugin : JavaPlugin,
-    task : (count : Int) -> Unit
-) : BukkitTask {
-    return asyncLoopTask(delay, period, plugin) {
-        for (i in times..1) {
-            task(i)
+    taskData = asyncLoopTask(delay, period, plugin) {
+        task(i)
+        if (i < times.last) {
+            i++
+        } else if (i > times.last) {
+            i--
+        } else {
+            taskData.cancel()
         }
     }
+
+    return taskData
+
 }
 
 fun runTaskLater(delay : Long, plugin : JavaPlugin, task : () -> Unit) : BukkitTask {
