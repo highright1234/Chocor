@@ -1,4 +1,4 @@
-package com.github.highright1234.chocor
+package com.github.highright1234.chocor.bungee
 
 import org.bukkit.entity.Player
 
