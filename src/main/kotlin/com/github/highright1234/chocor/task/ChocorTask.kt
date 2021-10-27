@@ -6,75 +6,76 @@ import org.bukkit.scheduler.BukkitTask
 
 object ChocorTask
 
-fun loopTask(delay : Long = 0, period : Long = 0, plugin : JavaPlugin, task : () -> Unit) : BukkitTask {
+fun loopTask(delay : Long = 0, period : Long = 0, plugin : JavaPlugin, task : ChocorTaskData.() -> Unit) : BukkitTask {
+    val chocorTaskData = ChocorTaskData()
     lateinit var runnable : BukkitRunnable
     runnable = object : BukkitRunnable() {
         override fun run() {
-            task()
+            task(chocorTaskData)
         }
     }
-    return runnable.runTaskTimer(plugin, delay, period)
+    return runnable.runTaskTimer(plugin, delay, period).also { chocorTaskData.task = it }
 }
 
-fun asyncLoopTask(delay : Long = 0, period : Long = 0, plugin : JavaPlugin, task : () -> Unit) : BukkitTask {
-    lateinit var runnable : BukkitRunnable
-    runnable = object : BukkitRunnable() {
+fun asyncLoopTask(delay : Long = 0, period : Long = 0, plugin : JavaPlugin, task : ChocorTaskData.() -> Unit) : BukkitTask {
+    val chocorTaskData = ChocorTaskData()
+    chocorTaskData.task = object : BukkitRunnable() {
         override fun run() {
-            task()
+            chocorTaskData.task()
         }
-    }
-    return runnable.runTaskTimerAsynchronously(plugin, delay, period)
+    }.runTaskTimerAsynchronously(plugin, delay, period)
+    return chocorTaskData.task
 }
 
-fun loopTask(
-    times : IntRange,
+fun <T> loopTask(
+    delay : Long = 0,
+    period : Long = 0,
+    iterator: Iterator<T>,
+    plugin : JavaPlugin,
+    task : ChocorTaskData.(T) -> Unit
+) : BukkitTask {
+    return loopTask(delay, period, plugin) { if (iterator.hasNext()) task(iterator.next()) else cancel() }
+}
+
+fun <T> loopTask(
+    iterable: Iterable<T>,
     delay : Long = 0,
     period : Long = 0,
     plugin : JavaPlugin,
-    task : (count : Int) -> Unit
-) : BukkitTask {
+    task : ChocorTaskData.(T) -> Unit
+) = loopTask(delay, period, iterable.iterator(), plugin, task)
 
-    lateinit var taskData : BukkitTask
-    var i = times.first
+fun <T> loopTask(
+    delay : Long = 0,
+    period : Long = 0,
+    collection: Collection<T>,
+    plugin : JavaPlugin,
+    task : ChocorTaskData.(T) -> Unit
+) = loopTask(delay, period, collection.iterator(), plugin, task)
 
-    taskData = loopTask(delay, period, plugin) {
-        task(i)
-        if (i < times.last) {
-            i++
-        } else if (i > times.last) {
-            i--
-        } else {
-            taskData.cancel()
-        }
-    }
-    return taskData
-}
+fun <T> asyncLoopTask(
+    delay : Long = 0,
+    period : Long = 0,
+    collection: Collection<T>,
+    plugin : JavaPlugin,
+    task : ChocorTaskData.(T) -> Unit
+) : BukkitTask = asyncLoopTask(delay, period, collection.iterator(), plugin, task)
 
-fun asyncLoopTask(
-    times : IntRange,
+fun <T> asyncLoopTask(
+    delay : Long = 0,
+    period : Long = 0,
+    iterator: Iterator<T>,
+    plugin : JavaPlugin,
+    task : ChocorTaskData.(T) -> Unit
+) : BukkitTask = asyncLoopTask(delay, period, plugin) { if (iterator.hasNext()) task(iterator.next()) else cancel() }
+
+fun <T> asyncLoopTask(
+    iterable : Iterable<T>,
     delay : Long = 0,
     period : Long = 0,
     plugin : JavaPlugin,
-    task : (count : Int) -> Unit
-) : BukkitTask {
-
-    lateinit var taskData : BukkitTask
-    var i = times.first
-
-    taskData = asyncLoopTask(delay, period, plugin) {
-        task(i)
-        if (i < times.last) {
-            i++
-        } else if (i > times.last) {
-            i--
-        } else {
-            taskData.cancel()
-        }
-    }
-
-    return taskData
-
-}
+    task : ChocorTaskData.(T) -> Unit
+) : BukkitTask = asyncLoopTask(delay, period, iterable.iterator(), plugin, task)
 
 fun runTaskLater(delay : Long, plugin : JavaPlugin, task : () -> Unit) : BukkitTask {
     return object : BukkitRunnable() {
@@ -94,26 +95,34 @@ fun runTaskLaterAsync(delay : Long, plugin : JavaPlugin, task : () -> Unit) : Bu
 
 
 fun JavaPlugin.loopTask(
-    delay : Long = 0, period : Long = 0, task : () -> Unit
+    delay : Long = 0, period : Long = 0, task : ChocorTaskData.() -> Unit
 ) : BukkitTask = loopTask(delay, period, this, task)
 
-fun JavaPlugin.asyncLoopTask(
-    delay : Long = 0, period : Long = 0, task : () -> Unit
-) : BukkitTask = asyncLoopTask(delay, period, this, task)
+fun <T> JavaPlugin.loopTask(
+    delay : Long = 0, period : Long = 0, collection: Collection<T>,task : ChocorTaskData.(T) -> Unit
+) : BukkitTask = loopTask(delay, period, collection, this, task)
 
-fun JavaPlugin.loopTask(
-    times : IntRange,
-    delay : Long = 0,
-    period : Long = 0,
-    task : (count : Int) -> Unit
-) : BukkitTask = loopTask(times, delay, period, this, task)
+fun <T> JavaPlugin.loopTask(
+    delay : Long = 0, period : Long = 0, iterator: Iterator<T>,task : ChocorTaskData.(T) -> Unit
+) : BukkitTask = loopTask(delay, period, iterator, this, task)
 
 fun JavaPlugin.asyncLoopTask(
-    times : IntRange,
+    delay : Long = 0, period : Long = 0, task : ChocorTaskData.() -> Unit
+) : BukkitTask = asyncLoopTask(delay, period, this,task)
+
+fun <T> JavaPlugin.loopTask(
+    iterable : Iterable<T>,
     delay : Long = 0,
     period : Long = 0,
-    task : (count : Int) -> Unit
-) : BukkitTask = asyncLoopTask(times, delay, period, this, task)
+    task : ChocorTaskData.(T) -> Unit
+) : BukkitTask = loopTask(iterable, delay, period, this, task)
+
+fun <T> JavaPlugin.asyncLoopTask(
+    iterable : Iterable<T>,
+    delay : Long = 0,
+    period : Long = 0,
+    task : ChocorTaskData.(T) -> Unit
+) : BukkitTask = asyncLoopTask(delay, period, iterable.iterator(), this, task)
 
 fun JavaPlugin.runTaskLater(
     delay : Long, task : () -> Unit
