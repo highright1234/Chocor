@@ -1,3 +1,5 @@
+# USE [SHOTOKONOKO](https://github.com/highright1234/shotokonoko) INSTEAD OF THIS
+
 # Chocor
 
 ---
